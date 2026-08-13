@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  color: #1a1a1a;
+  background: #fafafa;
+}
+
+button {
+  padding: 6px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+input {
+  padding: 6px;
+  font-size: 14px;
+}

@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-multipart
+onnxruntime
+opencv-python-headless
+numpy
+faiss-cpu
+scikit-image
+cryptography

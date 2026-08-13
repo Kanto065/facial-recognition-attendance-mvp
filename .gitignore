@@ -1,0 +1,23 @@
+# Python
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Model weights (large binaries — downloaded separately, see README)
+backend/weights/*.onnx
+
+# Runtime data (FAISS index, SQLite attendance DB)
+backend/data/
+
+# TLS cert/key (self-signed, generated locally, never commit private keys)
+backend/certs/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editor/OS cruft
+.vscode/
+.DS_Store
+Thumbs.db
