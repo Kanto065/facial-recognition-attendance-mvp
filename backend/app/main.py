@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import os
 
 import cv2
@@ -12,6 +13,12 @@ from app.models import SCRFD, ArcFace
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Windows' registry-backed mimetypes DB is frequently misconfigured to serve
+# .js as text/plain, which browsers reject for ES module scripts.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("application/javascript", ".mjs")
+mimetypes.add_type("text/css", ".css")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
