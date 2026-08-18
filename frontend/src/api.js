@@ -41,3 +41,16 @@ export async function listEmployees() {
   }
   return res.json();
 }
+
+export async function deleteEmployee(name) {
+  const res = await fetch(`${API_BASE}/employees/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Delete failed (${res.status})`);
+  }
+
+  return res.json();
+}

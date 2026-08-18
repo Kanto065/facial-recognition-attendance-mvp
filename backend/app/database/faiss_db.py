@@ -76,6 +76,22 @@ class FaceDatabase:
     def list_names(self) -> List[str]:
         return list(self.names)
 
+    def remove_by_name(self, name: str) -> int:
+        """Remove all entries matching name. Returns the number of entries removed."""
+        keep_indices = [i for i, n in enumerate(self.names) if n != name]
+        removed = len(self.names) - len(keep_indices)
+        if removed == 0:
+            return 0
+
+        new_index = faiss.IndexFlatIP(self.embedding_size)
+        if keep_indices:
+            vectors = np.vstack([self.index.reconstruct(i) for i in keep_indices]).astype(np.float32)
+            new_index.add(vectors)
+
+        self.index = new_index
+        self.names = [self.names[i] for i in keep_indices]
+        return removed
+
     def save(self) -> None:
         os.makedirs(os.path.dirname(self.index_path) or ".", exist_ok=True)
         faiss.write_index(self.index, self.index_path)

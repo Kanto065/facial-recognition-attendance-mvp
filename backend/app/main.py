@@ -120,6 +120,19 @@ async def list_employees():
     return {"employees": attendance_db.list_employees()}
 
 
+@app.delete("/employees/{name}")
+async def delete_employee(name: str):
+    removed_faces = face_db.remove_by_name(name)
+    deleted = attendance_db.delete_employee(name)
+    if not deleted and removed_faces == 0:
+        raise HTTPException(status_code=404, detail=f'Employee "{name}" not found')
+
+    if removed_faces:
+        face_db.save()
+
+    return {"name": name, "deleted": True}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "enrolled_faces": face_db.index.ntotal}

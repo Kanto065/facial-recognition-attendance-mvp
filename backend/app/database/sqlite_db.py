@@ -52,6 +52,13 @@ class AttendanceDB:
             ).fetchall()
         return [{"name": row[0], "enrolled_at": row[1]} for row in rows]
 
+    def delete_employee(self, name: str) -> bool:
+        """Delete an employee record. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cursor = conn.execute("DELETE FROM employees WHERE name = ?", (name,))
+            conn.commit()
+        return cursor.rowcount > 0
+
     def last_seen(self, name: str) -> Optional[datetime]:
         with self._connect() as conn:
             row = conn.execute(
