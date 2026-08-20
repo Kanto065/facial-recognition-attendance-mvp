@@ -7,3 +7,9 @@ numpy
 faiss-cpu
 scikit-image
 cryptography
+sqlalchemy>=2.0
+alembic
+pyodbc
+passlib[bcrypt]
+pydantic-settings
+pyjwt
