@@ -28,7 +28,14 @@ app = FastAPI(title="Warehouse Facial Recognition Attendance & Access Control AP
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],
+    # localhost:8080 = Vite dev server; the rest = LAN access to the built app
+    # served same-origin from this process (CORS doesn't apply there, but kept
+    # for anyone still pointing a separate dev frontend at this backend).
+    allow_origins=[
+        "http://localhost:8080",
+        "https://192.168.110.43:8000",
+        "https://server-43:8000",
+    ],
     allow_credentials=False,  # bearer-token auth, not cookies — no credentials needed
     allow_methods=["*"],
     allow_headers=["*"],
