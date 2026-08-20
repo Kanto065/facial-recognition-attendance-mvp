@@ -174,12 +174,10 @@ const Enroll = () => {
               </div>
               {cameraError && <p className="text-sm text-destructive">{cameraError}</p>}
 
-              {cameraOn && (
-                <div className="space-y-2">
-                  <video ref={videoRef} muted playsInline className="w-full max-w-xs rounded-md bg-black" />
-                  <Button type="button" onClick={capturePhoto}>Capture Photo</Button>
-                </div>
-              )}
+              <div className={cameraOn ? 'space-y-2' : 'hidden'}>
+                <video ref={videoRef} muted playsInline className="w-full max-w-xs rounded-md bg-black" />
+                <Button type="button" onClick={capturePhoto}>Capture Photo</Button>
+              </div>
 
               {previewUrl && !cameraOn && (
                 <img src={previewUrl} alt="Selected face" className="w-40 h-32 object-cover rounded-md border" />
