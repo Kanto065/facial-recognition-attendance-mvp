@@ -74,11 +74,21 @@ def recognize_faces(frame: np.ndarray) -> list[dict]:
 
     faces = []
     for box, (label, similarity) in zip(boxes, results):
-        matched = label != "Unknown"
+        person_id = None
+        if label != "Unknown":
+            try:
+                person_id = int(label)
+            except ValueError:
+                # Stale entry from before the FAISS labels were switched to
+                # numeric person ids (e.g. old MVP name-based enrollments) —
+                # treat as unmatched rather than crashing the request.
+                logger.warning("FAISS entry with non-numeric label %r — treating as unmatched", label)
+
+        matched = person_id is not None
         faces.append(
             {
                 "box": box,
-                "person_id": int(label) if matched else None,
+                "person_id": person_id,
                 "confidence": round(float(similarity), 4),
                 "matched": matched,
             }

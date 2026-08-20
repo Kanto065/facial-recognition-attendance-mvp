@@ -18,6 +18,7 @@ Evolve the facial-recognition attendance MVP into a Release 1 system for a wareh
 | Software-only access enforcement | Decided | Denied/flagged access is logged and shown in the dashboard; no hardware door/turnstile integration in Release 1. |
 | "Partial" access = time-windowed (extensible) | Decided | `zone_access_rules.conditions` JSON column keeps room for other partial mechanisms (escort-required, etc.) without a schema rewrite. |
 | Demo cameras = office PCs' webcams bridged to RTSP | Decided | via `mediamtx` + `ffmpeg` per demo PC; central server treats the RTSP URL like any real camera — no ingestion code path difference. |
+| Interim: browser-webcam cameras alongside RTSP | Decided | Added `cameras.source_type` (`rtsp`/`browser`, `rtsp_url` now nullable). A `browser` camera has no RTSP URL — instead, a device opens the **Capture** page, picks which registered camera it's acting as, and streams its own webcam straight to `POST /api/cameras/{id}/recognize` (polling, ~700ms). This exists because RTSP bridging (mediamtx/ffmpeg) wasn't set up yet and the user wanted the MVP's live name-overlay feed back immediately; it reuses the same `recognize_faces`/`decide_access`/event-logging path RTSP ingestion (M2/M3) will use, so nothing here is throwaway — RTSP cameras will just be another frame source feeding the same pipeline. |
 | Deployment: Windows Server only, no Docker | Decided | Supersedes an earlier dual Windows+Linux requirement. Native Windows Service (e.g. via NSSM) hosting Uvicorn + venv. |
 | Database: MSSQL (SQL Server) | Decided | Supersedes an earlier PostgreSQL recommendation. SQLAlchemy `mssql` dialect via `pyodbc`. |
 | Generic `persons` model, not `employees` | Decided | `category` enum (internal/external) + `person_type_id` FK to an admin-configurable `person_types` lookup table, so the schema is reusable outside a warehouse context. |
@@ -39,7 +40,7 @@ Evolve the facial-recognition attendance MVP into a Release 1 system for a wareh
 - **`person_types`** — admin-configurable lookup (id, name, category) — not a hard-coded enum, so new domains/types can be added without a migration.
 - **`person_face_embeddings`** — person_id FK, faiss_index_id — bridges MSSQL identity to the FAISS vector index (FAISS has no delete-by-id).
 - **`zones`** — id, name, description, zone_type.
-- **`cameras`** — id, zone_id FK, rtsp_url (encrypted), enabled, sampling_fps.
+- **`cameras`** — id, zone_id FK, source_type (`rtsp`/`browser`), rtsp_url (nullable — encrypted, only set for `rtsp`), enabled, sampling_fps.
 - **`zone_access_rules`** — person_id FK, zone_id FK, access_level (`full`/`partial`/`none`), valid_from/valid_until, conditions (JSON). Unique (person_id, zone_id).
 - **`attendance_events`** — person_id FK (nullable), camera_id FK, zone_id FK, timestamp, confidence.
 - **`access_events`** — person_id FK (nullable), camera_id FK, zone_id FK, access_level_at_time, decision (allowed/flagged/denied), timestamp, confidence.
@@ -58,11 +59,11 @@ backend/app/
     auth.py              # /api/auth/login, /me, /refresh, /change-password           [done]
     persons.py            # /api/persons, /api/person-types                            [done]
     zones.py               # /api/zones CRUD                                            [done]
-    cameras.py              # /api/cameras CRUD                                          [done]
+    cameras.py              # /api/cameras CRUD + POST /{id}/recognize (browser-source)   [done]
     access_rules.py          # /api/access-rules matrix get/upsert                        [done]
     enroll.py                 # /api/enroll — creates Person + face embedding             [done]
-    events.py                  # attendance_events/access_events query endpoints           [M4]
-    ws.py                       # /ws/events websocket                                       [M4]
+    events.py                  # GET /api/events/recent (polling live feed)               [done, interim]
+    ws.py                       # /ws/events websocket, replaces polling                    [M4]
   db/
     session.py         # SQLAlchemy engine/session (MSSQL via pyodbc), get_db dependency
     models.py            # ORM models: Person, PersonType, Zone, Camera, ZoneAccessRule,
@@ -70,7 +71,7 @@ backend/app/
   recognition/
     matcher.py          # single-owner wrapper: loads SCRFD/ArcFace + FaceDatabase (FAISS),
                           # enroll_face() / remove_person_faces() / recognize_faces()      [done]
-    access_decision.py   # (person, zone) -> zone_access_rules -> allowed/flagged/denied   [M2/M3]
+    access_decision.py   # (person, zone) -> zone_access_rules -> allowed/flagged/denied   [done]
   ingestion/              # per-camera RTSP reader + inference worker pool                 [M2/M3]
   events/                 # in-process pub/sub fan-out to websocket connections            [M4]
   database/faiss_db.py  # unchanged, now owned exclusively by recognition/matcher.py
@@ -93,28 +94,39 @@ Pages (`src/pages/`):
 | Login | `/login` | done — JWT login against `/api/auth/login` |
 | Dashboard | `/dashboard` | done — lightweight counts (persons/zones/cameras); full activity view is M4 |
 | Enroll | `/dashboard/enroll` | done — webcam/file capture, posts to `/api/enroll` (ported from the old MVP's `EnrollTab.jsx`) |
+| Capture | `/dashboard/capture` | done, interim — a device streams its own webcam as a chosen `browser`-source camera, polling `POST /api/cameras/{id}/recognize`, drawing bounding boxes + name/decision overlay (the MVP's live-feed UX, restored) |
 | Persons | `/dashboard/persons` | done — list, edit category/type/status, soft-deactivate |
 | Zones | `/dashboard/zones` | done — full CRUD |
-| Cameras | `/dashboard/cameras` | done — full CRUD, zone assignment; no live preview yet (M2+) |
+| Cameras | `/dashboard/cameras` | done — full CRUD, zone assignment, RTSP or browser-webcam source type |
 | Access | `/dashboard/access` | done — person x zone matrix, green/yellow/red `full`/`partial`/`none` |
-| Live | `/dashboard/live` | placeholder — needs the M2/M3 ingestion pipeline + M4 websocket feed |
-| Events | `/dashboard/events` | placeholder — needs M2/M3 event data + M4 query endpoints |
+| Live | `/dashboard/live` | done, interim — polls `GET /api/events/recent` every 2s; will move to the M4 websocket feed once ingestion is real-time |
+| Events | `/dashboard/events` | still a placeholder — historical filtering/pagination is M4 scope; `GET /api/events/recent` (used by Live) already provides the underlying data |
 | ChangePassword | `/dashboard/change-password` | done |
 
 `VITE_API_BASE_URL` (see `.env.development`) points the SPA at the backend; defaults to `http://localhost:8000`. CORS on the backend allows `http://localhost:8080` (Vite's dev port, see `frontend/vite.config.ts`).
 
-**Not yet run** — `npm install`/`npm run dev` haven't been executed in this environment; only manual review, not a browser check, has happened so far.
+**Verified against a live stack**: connected to a real MSSQL instance (`SERVER-43`, SQL auth — Windows auth doesn't work since it's a separate workgroup machine from the dev box), ran the migrations, and exercised every route via curl plus a real browser session (login, all CRUD pages, enroll with a real face photo, and the Capture→Live live-recognition loop with an actual webcam). Two real bugs were found and fixed this way — see below.
 
 ## Milestones
 
-- [x] **M0** — Branch + scaffolding: branch created, this doc, dependencies added, initial Alembic migration (hand-written — no live MSSQL connection was available to autogenerate against; verify with `alembic upgrade head` against a real SQL Server instance before relying on it).
-- [x] **M1** (first pass) — Data model (`app/db/models.py`), initial migration, JWT auth (`app/auth/`, `app/routers/auth.py`), CRUD routers for persons/person-types/zones/cameras/access-rules, `/api/enroll` ported to the new schema, admin dashboard frontend (Zones, Cameras, Persons, Enroll, Access-matrix pages functional; Live/Events pages are placeholders — real content is M4 scope since it needs the ingestion pipeline and websocket feed). **Not yet verified against a live MSSQL database or run end-to-end** — `pip install` in this environment hit network timeouts on the ML dependencies, so only `py_compile` syntax-checking was possible. Run `alembic upgrade head`, `python -m scripts.seed --password <pw>`, and a real login-through-CRUD pass before trusting this.
-- [ ] **M2** — Single-camera server-side RTSP ingestion, end-to-end.
+- [x] **M0** — Branch + scaffolding: branch created, this doc, dependencies added, initial Alembic migration.
+- [x] **M1** — Data model, JWT auth, CRUD routers for persons/person-types/zones/cameras/access-rules, `/api/enroll`. Verified end-to-end against a live MSSQL instance and a real browser session (see Live-Testing Notes below).
+- [x] **M2/M4 interim** — Browser-webcam camera source (`cameras.source_type`), live recognition+access-decision+event-logging via `POST /api/cameras/{id}/recognize` (Capture page), and a polling live feed (`GET /api/events/recent`, Live page). Ships the MVP's name-overlay UX now, ahead of RTSP ingestion, on the same pipeline RTSP will use.
+- [ ] **M2 (RTSP)** — Single-camera server-side RTSP ingestion (the `ingestion/` module — ffmpeg/mediamtx-bridged or real IP cameras feeding the same `recognize`/`decide_access`/event-logging path the browser cameras already use).
 - [ ] **M3** — Multi-camera/multi-zone ingestion at scale.
-- [ ] **M4** — Dashboard live view + event log.
+- [ ] **M4 (websocket)** — Replace Live page polling with `/ws/events`; build out the full Events history page (filters, pagination).
 - [ ] **M5** — Hardening / Release 1 close-out.
 
 **Explicitly deferred beyond Release 1**: per-zone edge inference servers, physical door/turnstile hardware integration, multi-role RBAC, advanced analytics dashboards, punch-in/out shift semantics, GPU inference, Linux deployment.
+
+## Live-Testing Notes
+
+Tested against a real MSSQL instance (`SERVER-43`, SQL login `sa` — cross-machine Windows Integrated Auth doesn't work between workgroup machines, so SQL auth is required; connection details live in the gitignored `backend/.env`). Two real bugs were caught this way and fixed:
+
+1. **`app/recognition/matcher.py` wrong base-directory depth** — copied from `main.py`'s two-`dirname()` pattern without accounting for `matcher.py` living one directory deeper (`app/recognition/` vs `app/`), which would have pointed `weights`/`data` at the wrong folder.
+2. **`passlib` + `bcrypt>=4.0` incompatibility** — `passlib[bcrypt]`'s pip extra doesn't pin a compatible `bcrypt` version; pinned `bcrypt<4.0` in `requirements.txt`.
+3. **Enroll page black webcam** — the `<video>` element was conditionally rendered on `cameraOn`, so `startCamera()` set `videoRef.current.srcObject` while the ref was still `null`. Fixed by always mounting `<video>` and toggling visibility via CSS, matching the original MVP pattern.
+4. **FAISS crash on legacy name-labeled entries** — the FAISS index carried over pre-migration MVP enrollments keyed by name (e.g. `"kanto"`) rather than numeric person id, so `int(label)` in `recognize_faces` threw on any match against one of them. Fixed defensively (non-numeric labels are now treated as unmatched, not fatal) **and** the stale index was purged, since those old entries had no corresponding `persons`/`person_face_embeddings` rows anyway. **This purge also deleted the vectors for two enrollments made during this same testing session** ("Test Astronaut" and a real self-enrollment) — their `persons` rows and `zone_access_rules` still exist, but `person_face_embeddings` was cleared and they need to be **re-enrolled** via the Enroll page to be recognized again. Any future enrollments are unaffected.
 
 ## Demo Camera Setup (Office Testing)
 

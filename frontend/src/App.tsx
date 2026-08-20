@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Enroll from "./pages/Enroll";
+import Capture from "./pages/Capture";
 import Persons from "./pages/Persons";
 import Zones from "./pages/Zones";
 import Cameras from "./pages/Cameras";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="enroll" element={<Enroll />} />
+                <Route path="capture" element={<Capture />} />
                 <Route path="persons" element={<Persons />} />
                 <Route path="zones" element={<Zones />} />
                 <Route path="cameras" element={<Cameras />} />

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.envelope import http_exception_handler, validation_exception_handler
 from app.recognition import matcher  # also loads models + FAISS index at import time
-from app.routers import access_rules, auth, cameras, enroll, persons, zones
+from app.routers import access_rules, auth, cameras, enroll, events, persons, zones
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ app.include_router(zones.router)
 app.include_router(cameras.router)
 app.include_router(access_rules.router)
 app.include_router(enroll.router)
+app.include_router(events.router)
 
 
 @app.get("/health")

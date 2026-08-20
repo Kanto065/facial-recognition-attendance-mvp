@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, User, Lock, ScanFace, Users, MapPin, Video, ShieldCheck, Radio, History, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, Lock, ScanFace, Users, MapPin, Video, ShieldCheck, Radio, History, Sun, Moon, Webcam } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
@@ -29,6 +29,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 const menuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Enroll', url: '/dashboard/enroll', icon: ScanFace },
+  { title: 'Capture', url: '/dashboard/capture', icon: Webcam },
   { title: 'Persons', url: '/dashboard/persons', icon: Users },
   { title: 'Zones', url: '/dashboard/zones', icon: MapPin },
   { title: 'Cameras', url: '/dashboard/cameras', icon: Video },

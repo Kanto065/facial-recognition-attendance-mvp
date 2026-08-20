@@ -20,11 +20,12 @@ import { api } from '@/lib/api';
 
 interface ZoneRow { id: string; name: string }
 interface CameraRow {
-  id: string; zoneId: string; zoneName: string | null; name: string; rtspUrl: string; enabled: boolean; samplingFps: number;
+  id: string; zoneId: string; zoneName: string | null; name: string;
+  sourceType: 'rtsp' | 'browser'; rtspUrl: string | null; enabled: boolean; samplingFps: number;
 }
 
-type FormState = { zoneId: string; name: string; rtspUrl: string; enabled: boolean; samplingFps: string };
-const emptyForm: FormState = { zoneId: '', name: '', rtspUrl: '', enabled: true, samplingFps: '1.5' };
+type FormState = { zoneId: string; name: string; sourceType: 'rtsp' | 'browser'; rtspUrl: string; enabled: boolean; samplingFps: string };
+const emptyForm: FormState = { zoneId: '', name: '', sourceType: 'rtsp', rtspUrl: '', enabled: true, samplingFps: '1.5' };
 
 const Cameras = () => {
   const { toast } = useToast();
@@ -45,7 +46,8 @@ const Cameras = () => {
   const toPayload = (f: FormState) => ({
     zoneId: f.zoneId,
     name: f.name,
-    rtspUrl: f.rtspUrl,
+    sourceType: f.sourceType,
+    rtspUrl: f.sourceType === 'rtsp' ? f.rtspUrl : null,
     enabled: f.enabled,
     samplingFps: parseFloat(f.samplingFps) || 1.5,
   });
@@ -71,8 +73,12 @@ const Cameras = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.rtspUrl.trim() || !form.zoneId) {
-      toast({ title: 'Validation Error', description: 'Name, RTSP URL, and zone are required.', variant: 'destructive' });
+    if (!form.name.trim() || !form.zoneId) {
+      toast({ title: 'Validation Error', description: 'Name and zone are required.', variant: 'destructive' });
+      return;
+    }
+    if (form.sourceType === 'rtsp' && !form.rtspUrl.trim()) {
+      toast({ title: 'Validation Error', description: 'RTSP URL is required for RTSP cameras.', variant: 'destructive' });
       return;
     }
     const payload = toPayload(form);
@@ -85,7 +91,7 @@ const Cameras = () => {
 
   const handleEdit = (c: CameraRow) => {
     setEditing(c);
-    setForm({ zoneId: c.zoneId, name: c.name, rtspUrl: c.rtspUrl, enabled: c.enabled, samplingFps: String(c.samplingFps) });
+    setForm({ zoneId: c.zoneId, name: c.name, sourceType: c.sourceType, rtspUrl: c.rtspUrl ?? '', enabled: c.enabled, samplingFps: String(c.samplingFps) });
     setIsDialogOpen(true);
   };
 
@@ -109,7 +115,7 @@ const Cameras = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Cameras</h1>
           <p className="text-muted-foreground">
-            Register an RTSP feed and assign it to a zone. Demo cameras (office PC webcams bridged via mediamtx/ffmpeg) work the same way — see docs/warehouse-architecture.md.
+            Register an RTSP feed, or a browser-webcam camera that a device streams to live from the Capture page.
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => (open ? setIsDialogOpen(true) : resetForm())}>
@@ -121,7 +127,7 @@ const Cameras = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editing ? 'Edit Camera' : 'Add Camera'}</DialogTitle>
-              <DialogDescription>rtsp://host:port/stream — same shape for a real IP camera or a demo webcam bridge.</DialogDescription>
+              <DialogDescription>RTSP for a real/bridged IP feed, or Browser Webcam for a device that streams via the Capture page.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -138,9 +144,21 @@ const Cameras = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="rtspUrl">RTSP URL *</Label>
-                <Input id="rtspUrl" value={form.rtspUrl} onChange={(e) => setForm((f) => ({ ...f, rtspUrl: e.target.value }))} placeholder="rtsp://192.168.1.50:8554/cam1" required disabled={isSubmitting} />
+                <Label htmlFor="sourceType">Source *</Label>
+                <Select value={form.sourceType} onValueChange={(v: 'rtsp' | 'browser') => setForm((f) => ({ ...f, sourceType: v }))} disabled={isSubmitting}>
+                  <SelectTrigger id="sourceType"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rtsp">RTSP feed</SelectItem>
+                    <SelectItem value="browser">Browser webcam (Capture page)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {form.sourceType === 'rtsp' && (
+                <div className="space-y-2">
+                  <Label htmlFor="rtspUrl">RTSP URL *</Label>
+                  <Input id="rtspUrl" value={form.rtspUrl} onChange={(e) => setForm((f) => ({ ...f, rtspUrl: e.target.value }))} placeholder="rtsp://192.168.1.50:8554/cam1" disabled={isSubmitting} />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="samplingFps">Sampling FPS</Label>
                 <Input id="samplingFps" type="number" step="0.1" min="0.1" value={form.samplingFps} onChange={(e) => setForm((f) => ({ ...f, samplingFps: e.target.value }))} disabled={isSubmitting} />
@@ -167,7 +185,7 @@ const Cameras = () => {
       <Card>
         <CardHeader>
           <CardTitle>All Cameras ({cameras.length})</CardTitle>
-          <CardDescription>Live ingestion/recognition against these feeds lands in M2/M3</CardDescription>
+          <CardDescription>Browser-webcam cameras stream live from the Capture page; RTSP feeds land in M2/M3</CardDescription>
         </CardHeader>
         <CardContent>
           {cameras.length === 0 ? (
@@ -182,9 +200,12 @@ const Cameras = () => {
                   <div>
                     <p className="font-medium flex items-center gap-2">
                       {c.name}
+                      <Badge variant="secondary" className="text-xs capitalize">{c.sourceType === 'rtsp' ? 'RTSP' : 'Browser'}</Badge>
                       {!c.enabled && <Badge variant="outline" className="text-muted-foreground">Disabled</Badge>}
                     </p>
-                    <p className="text-xs text-muted-foreground">{c.zoneName ?? 'No zone'} · {c.rtspUrl} · {c.samplingFps} fps</p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.zoneName ?? 'No zone'} · {c.sourceType === 'rtsp' ? c.rtspUrl : 'Streamed from Capture page'} · {c.samplingFps} fps
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Edit className="w-4 h-4" /></Button>

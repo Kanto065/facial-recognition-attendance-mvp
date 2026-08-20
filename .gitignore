@@ -13,6 +13,9 @@ backend/data/
 # TLS cert/key (self-signed, generated locally, never commit private keys)
 backend/certs/
 
+# Local secrets (DB connection string, JWT secret key — never commit)
+backend/.env
+
 # Node / frontend
 frontend/node_modules/
 frontend/dist/

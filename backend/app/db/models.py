@@ -40,6 +40,11 @@ class AccessDecision(str, enum.Enum):
     denied = "denied"
 
 
+class CameraSourceType(str, enum.Enum):
+    rtsp = "rtsp"
+    browser = "browser"
+
+
 class PersonType(Base):
     __tablename__ = "person_types"
 
@@ -100,7 +105,10 @@ class Camera(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     zone_id: Mapped[int] = mapped_column(ForeignKey("zones.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    rtsp_url: Mapped[str] = mapped_column(Text, nullable=False)
+    source_type: Mapped[CameraSourceType] = mapped_column(
+        Enum(CameraSourceType, name="camera_source_type"), nullable=False, default=CameraSourceType.rtsp
+    )
+    rtsp_url: Mapped[str | None] = mapped_column(Text, nullable=True)  # null for source_type=browser
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sampling_fps: Mapped[float] = mapped_column(Float, nullable=False, default=1.5)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
