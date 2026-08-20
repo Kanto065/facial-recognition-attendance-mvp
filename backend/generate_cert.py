@@ -40,7 +40,7 @@ for name in extra_names:
 
 key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
-subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Facial Recognition Attendance (self-signed)")])
+subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Face Detection System (self-signed)")])
 
 cert = (
     x509.CertificateBuilder()

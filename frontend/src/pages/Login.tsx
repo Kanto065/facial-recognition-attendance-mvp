@@ -60,7 +60,7 @@ const Login = () => {
           <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
             <ScanFace className="w-8 h-8 text-primary-foreground" />
           </div>
-          <CardTitle className="text-3xl font-bold">Warehouse Access Control</CardTitle>
+          <CardTitle className="text-3xl font-bold">Face Detection System</CardTitle>
           <CardDescription>Sign in to manage zones, cameras, and access</CardDescription>
         </CardHeader>
         <CardContent>

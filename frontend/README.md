@@ -1,6 +1,6 @@
-# Warehouse Access Control — Admin Frontend
+# Face Detection System — Admin Frontend
 
-Admin dashboard for the warehouse facial-recognition attendance & zone access system. React + TypeScript + Vite, shadcn/ui, TanStack Query, React Router.
+Admin dashboard for the face-detection attendance & zone access system. React + TypeScript + Vite, shadcn/ui, TanStack Query, React Router.
 
 See `docs/warehouse-architecture.md` at the repo root for the overall system architecture and milestone plan.
 

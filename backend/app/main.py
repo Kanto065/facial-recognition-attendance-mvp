@@ -24,7 +24,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 FRONTEND_DIST = os.path.join(PROJECT_ROOT, "frontend", "dist")
 
-app = FastAPI(title="Warehouse Facial Recognition Attendance & Access Control API")
+app = FastAPI(title="Face Detection System API")
 
 app.add_middleware(
     CORSMiddleware,

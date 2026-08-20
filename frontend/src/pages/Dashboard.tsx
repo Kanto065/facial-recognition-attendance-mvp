@@ -36,7 +36,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Warehouse facial recognition & zone access overview.</p>
+          <p className="text-muted-foreground mt-1">Face detection & zone access overview.</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-card">
           <Calendar className="h-4 w-4 text-muted-foreground" />
