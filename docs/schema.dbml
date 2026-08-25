@@ -1,0 +1,154 @@
+////////////////////////////////////////////////////
+// MAIN TABLES
+////////////////////////////////////////////////////
+
+Table persons {
+  id int [not null, primary key]
+  full_name varchar(200) [not null]
+  category varchar [not null] //enum: person_category
+  person_type_id int
+  status varchar [not null, default: "active"] //enum: person_status
+
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table person_types {
+  id int [not null, primary key]
+  name varchar(64) [not null, unique]
+  category varchar [not null] //enum: person_type_category
+}
+
+Table person_face_embeddings {
+  id int [not null, primary key]
+  person_id int [not null]
+  faiss_index_id int [not null]
+
+  created_at datetime [not null]
+}
+
+Table zones {
+  id int [not null, primary key]
+  name varchar(120) [not null, unique]
+  description varchar(500)
+  zone_type varchar(50) [not null, default: "general"]
+
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table cameras {
+  id int [not null, primary key]
+  zone_id int [not null]
+  name varchar(120) [not null]
+  source_type varchar [not null, default: "rtsp"] //enum: camera_source_type
+  rtsp_url varchar [note: "null when source_type = browser"]
+  enabled bit [not null, default: "true"]
+  sampling_fps float [not null, default: "1.5"]
+
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table zone_access_rules {
+  id int [not null, primary key]
+  person_id int [not null]
+  zone_id int [not null]
+  access_level varchar [not null] //enum: access_level
+  valid_from datetime
+  valid_until datetime
+  conditions varchar [note: "JSON-encoded, extensible partial-access rules"]
+
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  indexes {
+    (person_id, zone_id) [unique, name: "uq_zone_access_rules_person_zone"]
+  }
+}
+
+Table attendance_events {
+  id int [not null, primary key]
+  person_id int
+  camera_id int [not null]
+  zone_id int [not null]
+  confidence float [not null]
+
+  occurred_at datetime [not null]
+}
+
+Table access_events {
+  id int [not null, primary key]
+  person_id int
+  camera_id int [not null]
+  zone_id int [not null]
+  access_level_at_time varchar [not null] //enum: access_level_at_time
+  decision varchar [not null] //enum: access_decision
+  confidence float [not null]
+
+  occurred_at datetime [not null]
+}
+
+Table admin_users {
+  id int [not null, primary key]
+  username varchar(100) [not null, unique]
+  password_hash varchar(255) [not null]
+  role varchar(30) [not null, default: "admin"]
+
+  created_at datetime [not null]
+  last_login_at datetime
+}
+
+
+////////////////////////////////////////////////////
+// ENUMS
+////////////////////////////////////////////////////
+
+Enum person_category {
+  internal
+  external
+}
+
+Enum person_status {
+  active
+  inactive
+}
+
+Enum access_level {
+  full
+  partial
+  none
+}
+
+Enum access_decision {
+  allowed
+  flagged
+  denied
+}
+
+Enum camera_source_type {
+  rtsp
+  browser
+}
+
+
+////////////////////////////////////////////////////
+// RELATIONSHIPS
+////////////////////////////////////////////////////
+
+Ref: persons.person_type_id > person_types.id
+
+Ref: person_face_embeddings.person_id > persons.id
+
+Ref: cameras.zone_id > zones.id
+
+Ref: zone_access_rules.person_id > persons.id
+Ref: zone_access_rules.zone_id > zones.id
+
+Ref: attendance_events.person_id > persons.id
+Ref: attendance_events.camera_id > cameras.id
+Ref: attendance_events.zone_id > zones.id
+
+Ref: access_events.person_id > persons.id
+Ref: access_events.camera_id > cameras.id
+Ref: access_events.zone_id > zones.id
